@@ -22,11 +22,6 @@ clash: {
 				port:   9090
 				expose: true
 			},
-			// {
-			// 	name:   "yacd"
-			// 	port:   80
-			// 	expose: true
-			// },
 		]
 		exposeType: parameter.serviceType
 		livenessProbe: {
@@ -74,34 +69,16 @@ clash: {
 				}
 			}
 		},
-		// {
-		// 	type: "sidecar"
-		// 	properties: {
-		// 		name:  "yacd"
-		// 		image: parameter.yacdImage
-		// 		env: [{
-		// 			name:  "YACD_DEFAULT_BACKEND"
-		// 			value: "http://192.168.88.111:9090"
-		// 		}]
-		// 		volumnes: [{
-		// 			name: "localtime"
-		// 			path: "/etc/localtime"
-		// 		}]
-		// 		livenessProbe: {
-		// 			httpGet: {
-		// 				path: "/"
-		// 				port: 80
-		// 			}
-		// 			initialDelaySeconds: 5
-		// 		}
-		// 		readinessProbe: {
-		// 			httpGet: {
-		// 				path: "/"
-		// 				port: 80
-		// 			}
-		// 			initialDelaySeconds: 5
-		// 		}
-		// 	}
-		// },
+		{
+			type: "init-container"
+			properties: {
+				name:  "yacd"
+				image: parameter.yacdImage
+				cmd: ["cp", "-r", "/usr/share/nginx/html", "/dashboard/ui"]
+				mountName:     "dashboard"
+				initMountPath: "/dashboard"
+				appMountPath:  "/dashboard"
+			}
+		},
 	]
 }

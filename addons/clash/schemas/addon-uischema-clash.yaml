@@ -1,5 +1,0 @@
-- jsonKey: clashConfig
-  label: Clash Config
-  uiType: K8sObjectsCode
-  validate:
-    required: true

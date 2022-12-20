@@ -1,95 +1,81 @@
 package main
 
-#Dns: {
-	enable: bool | *true
-	listen: string | *"0.0.0.0:53"
-	// +usage=When the false, response to AAAA questions will be empty
-	ipv6: bool | *false
-	// +usage=Nameservers are used to resolve the DNS nameserver hostnames below, specify IP addresses only
-	"default-nameserver": [...string]
-	"enhanced-mode": "fake-ip" | "redir-host"
-	// +usage=Fake IP addresses pool CIDR
-	"fake-ip-range": string
-	// +usage=Lookup hosts and return IP record
-	"use-hosts": bool
-	// +usage=Hostnames in this list will not be resolved with fake IPs
-	"fake-ip-filter"?: [...string]
-	// +usage=All DNS questions are sent directly to the nameserver, without proxies involved, clash answers the DNS question with the first result gathered
-	nameserver: [...string]
-	// +usage=DNS server will send concurrent requests to the servers in this section along with servers in 'nameservers'
-	fallback?: [...string]
-	"fallback-filter"?: #FallbackFilter
-	"nameserver-policy"?: [...string]
+#FallbackFilter: {
+	geoip:         bool
+	"geoip-code"?: string
+	ipcidr?: [...string]
+	domain?: [...string]
 }
 
-#FallbackFilter: {
-	geoip:        true
-	"geoip-code": bool
-	ipcidr: [...string]
-	domain: [...string]
+#ProxyType: "trojan" | "ss" | "vmess" | "socks5" | "http" | "snell" | "ssr" | "wireguard"
+#Port:      int | =~"^\\d+$"
+
+#Proxy: {
+	name:   string
+	type:   #ProxyType
+	server: string
+	port:   #Port
+	...
 }
 
 #TrojanProxy: {
-	name:     string
-	type:     "trojan"
-	server:   string
-	port:     int
-	password: string
-	...
+	name:                string
+	server:              string
+	port:                #Port
+	type:                "trojan"
+	password:            string
+	udp?:                bool
+	sni?:                string
+	"skip-cert-verify"?: bool
 }
 
 #ShadowsocksProxy: {
 	name:     string
-	type:     "ss"
 	server:   string
-	port:     int
+	port:     #Port
+	type:     "ss"
 	cipher:   string
 	password: string
 	udp:      bool
-	...
 }
 
 #VmessProxy: {
 	name:    string
-	type:    "vmess"
 	server:  string
-	port:    int
+	port:    #Port
+	type:    "vmess"
 	uuid:    string
 	alterId: int
 	cipher:  string
-	...
 }
 
 #SocketProxy: {
 	name:   string
-	type:   "socks5"
 	server: string
-	port:   int
-	...
+	port:   #Port
+	type:   "socks5"
 }
 
 #HttpProxy: {
 	name:   string
-	type:   "http"
 	server: string
-	port:   int
-	...
+	port:   #Port
+	type:   "http"
 }
 
 #SnellProxy: {
 	name:   string
-	type:   "snell"
 	server: string
-	port:   int
+	port:   #Port
+	type:   "snell"
 	psk:    string
-	...
 }
 
 #ShadowsocksRProxy: {
 	name:     string
-	type:     "ssr"
 	server:   string
-	port:     int
+	port:     #Port
+	type:     "ssr"
 	cipher:   string
 	password: string
 	obfs:     string
@@ -98,9 +84,9 @@ package main
 
 #WireguardProxy: {
 	name:             string
-	type:             "wireguard"
 	server:           string
-	port:             int
+	port:             #Port
+	type:             "wireguard"
 	ip:               string
 	ipv6?:            string
 	"private-key":    string
@@ -111,87 +97,61 @@ package main
 	udp:  bool | *true
 }
 
-#Proxy: #TrojanProxy | #ShadowsocksProxy | #VmessProxy | #SocketProxy | #HttpProxy | #SnellProxy | #ShadowsocksRProxy | #WireguardProxy
+#ProxyGroup: {
+	name: *"PROXY" | string
+	type: "url-test" | "fallback" | "load-balance" | "select" | "relay"
+	proxies?: [...string]
+	use?: [...string]
+	"interface-name"?: string
+	url?:              string
+	interval?:         int
+}
 
 #HealthCheck: {
-	enable:   bool | *true
-	url:      string | *"http://www.gstatic.com/generate_204"
-	interval: int | *300
+	enable:   *true | bool
+	url:      *"http://www.gstatic.com/generate_204" | string
+	interval: *300 | int
 }
 
 #HttpProxyProvider: {
 	type:           "http"
 	path:           string
 	url:            string
-	interval:       int | *3600
+	interval:       int
 	"health-check": #HealthCheck
 }
 
-#FileProxyProvider: {
-	type:           "file"
+#HttpProxyProviderEditor: {
+	name:           string
+	type:           "http"
 	path:           string
+	url:            string
+	interval:       *3600 | int
 	"health-check": #HealthCheck
 }
 
-#ProxyProvider: #HttpProxyProvider | #FileProxyProvider
+#RuleBehavior: *"domain" | "classical" | "ipcidr"
 
-#ProxyGroupType: "url-test" | "fallback" | "load-balance" | "select" | "relay"
-
-#ProxyGroup: {
-	name: string | *"PROXY"
-	type: #ProxyGroupType
-	proxies: [...string]
-	url?:      string
-	interval?: int
-	use?: [...string]
-	proxies?: [...string]
-}
-
-#HTTPRuleProvider: {
+#HttpRuleProvider: {
 	type:     "http"
-	behavior: "classical" | "ipcidr" | "domain"
+	behavior: #RuleBehavior
 	url:      string
 	path:     string
-	interval: int | *86400
+	interval: int
 }
 
-#FileRuleProvider: {
-	type:     "file"
-	behavior: "classical" | "ipcidr" | "domain"
+#HttpRuleProviderEditor: {
+	name:     string
+	type:     "http"
+	behavior: #RuleBehavior
+	url:      string
 	path:     string
-}
-
-#RuleProvider: #HTTPRuleProvider | #FileRuleProvider
-
-#ClashConfig: {
-	// +usage=Port of HTTP(S) proxy server on the local end
-	"mixed-port": int | *7890
-	// +usage=Allow connections to the local-end server from other LAN IP addresses
-	"allow-lan": bool | *true
-	// +usage= Bind IPv4 or IPv6 address, '*': bind all IP addresses, only applicable when 'allow-lan' is 'true'
-	"bind-address": string | *"*"
-	// +usage=Clash router working mode
-	mode: "rule" | "global" | "direct" | *"rule"
-	// +usage=Clash log level
-	"log-level": "info" | "warning" | "error" | "debug" | "silent" | *"info"
-	ipv6:        bool | *false
-	// +usage=RESTful web API listening address
-	"external-controller": string | *":9090"
-	// +usage=A relative path to the configuration directory or an absolute path to a directory in which you put some static web resource
-	"external-ui": string | *"ui"
-	// +usage=DNS server settings
-	dns?: #Dns
-	// +usage=
-	proxies?: [...#Proxy]
-	"proxy-providers"?: {[string]: #ProxyProvider}
-	// +usage=
-	"proxy-groups"?: [...#ProxyGroup]
-	"rule-providers"?: {[string]: #RuleProvider}
-	// +usage=
-	rules?: [...string]
+	interval: *86400 | int
 }
 
 parameter: {
+	//+usage=Namespace to deploy to, defaults to clash
+	namespace: *"clash" | string	
 	// +usage=Clash image
 	clashImage: *"dreamacro/clash-premium:2022.08.26" | string
 	// +usage=Yacd image
@@ -199,32 +159,69 @@ parameter: {
 	// +usage=Service type
 	serviceType: *"ClusterIP" | "NodePort" | "LoadBalancer"
 	// +usage=Clash config
-	clashConfig: #ClashConfig 
-	// | *{
-	// 	"mixed-port":          7890
-	// 	"allow-lan":           true
-	// 	"bind-address":        "*"
-	// 	mode:                  "rule"
-	// 	"log-level":           "info"
-	// 	"external-controller": ":9090"
-	// 	dns: {
-	// 		enable: true
-	// 		ipv6:   false
-	// 		"default-nameserver": ["223.5.5.5", "119.29.29.29", ...]
-	// 		"enhanced-mode": "redir-host"
-	// 		"fake-ip-range": "198.18.0.1/16"
-	// 		"use-hosts":     true
-	// 		nameserver: ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"]
-	// 		fallback: [
-	// 		 "https://doh.dns.sb/dns-query",
-	// 		 "https://dns.cloudflare.com/dns-query",
-	// 		 "https://dns.twnic.tw/dns-query",
-	// 		 "tls://8.8.4.4:853",
-	// 		]
-	// 		"fallback-filter": {
-	// 			geoip: true
-	// 			 ipcidr: ["240.0.0.0/4", "0.0.0.0/32"]
-	// 		}
-	// 	}
-	// }
+	clashConfig: {
+		// +usage=Port of HTTP(S) proxy server on the local end
+		mixedPort: *7890 | int
+		// +usage=Allow connections to the local-end server from other LAN IP addresses
+		allowLan: *true | bool
+		// +usage= Bind IPv4 or IPv6 address, '*': bind all IP addresses, only applicable when 'allow-lan' is 'true'
+		bindAddress: *"*" | string
+		// +usage=Clash router working mode
+		mode: *"rule" | "global" | "direct"
+		// +usage=Clash log level
+		logLevel: *"info" | "warning" | "error" | "debug" | "silent"
+		ipv6:     *false | bool
+		// +usage=RESTful web API listening address
+		externalController: *":9090" | string
+		// +usage=A relative path to the configuration directory or an absolute path to a directory in which you put some static web resource
+		externalUI: *"/dashboard/ui" | string
+		profile?: {
+			// +usage=Open tracing exporter API
+			tracing: *true | bool
+		}
+		// +usage=DNS server settings
+		dns?: {
+			enable: bool | *true
+			// +usage=All DNS questions are sent directly to the nameserver, without proxies involved, clash answers the DNS question with the first result gathered, supports UDP, TCP, DoT, DoH. You can specify the port to connect to
+			nameserver: [...string]
+			listen?: string
+			// +usage=When the false, response to AAAA questions will be empty
+			ipv6?: bool
+			// +usage=Nameservers are used to resolve the DNS nameserver hostnames below, specify IP addresses only
+			"default-nameserver"?: [...string]
+			"enhanced-mode"?: "fake-ip" | "redir-host"
+			// +usage=Fake IP addresses pool CIDR
+			"fake-ip-range"?: string
+			// +usage=Lookup hosts and return IP record
+			"use-hosts"?: bool
+			// +usage=Hostnames in this list will not be resolved with fake IPs
+			"fake-ip-filter"?: [...string]
+			// +usage=DNS server will send concurrent requests to the servers in this section along with servers in 'nameservers'
+			fallback?: [...string]
+			"fallback-filter"?: #FallbackFilter
+			"nameserver-policy"?: [...string]
+		}
+		// +usage=Proxy server settings
+		proxies?: [...#Proxy]
+		// +usage=Proxy server editor, will be merged into the proxies
+		proxyEditor?: {
+			trojanProxy?: [...#TrojanProxy]
+			shadowsocksProxy?: [...#ShadowsocksProxy]
+			vmessProxy?: [...#VmessProxy]
+			socketProxy?: [...#SocketProxy]
+			httpProxy?: [...#HttpProxy]
+			snellProxy?: [...#SnellProxy]
+			shadowsocksRProxy?: [...#ShadowsocksRProxy]
+			wireguardProxy?: [...#WireguardProxy]
+		}
+		// +usage=Relay chains the proxies
+		"proxy-groups"?: [...#ProxyGroup]
+		"proxy-providers"?: [string]: #HttpProxyProvider
+		// +usage=Proxy provider editor, will be merged into the proxy-providers
+		proxyProviderEditor?: [...#HttpProxyProviderEditor]
+		"rule-providers"?: [string]: #HttpRuleProvider
+		// +usage=Rule provider editor, will be merged into the rule-providers
+		ruleProviderEditor?: [...#HttpRuleProviderEditor]
+		rules?: [...=~"^(DOMAIN-SUFFIX,|DOMAIN-KEYWORD,|DOMAIN,|SRC-IP-CIDR,|IP-CIDR,|IP-CIDR6,|GEOIP,|DST-PORT,|SRC-PORT,|MATCH,|RULE-SET,)"]
+	}
 }
