@@ -48,7 +48,7 @@ clash: {
 					mountPath: "/etc/localtime"
 					path:      "/usr/share/zoneinfo/Asia/Shanghai"
 				},
-			]
+			],
 			configMap: [
 				{
 					name:      "config"
@@ -72,6 +72,17 @@ clash: {
 					cpu:    0.5
 					memory: "500Mi"
 				}
+			}
+		},
+		{
+			type: "init-container"
+			properties: {
+				name:  "yacd"
+				image: parameter.yacdImage		
+				cmd: ["cp", "-r", "/usr/share/nginx/html", "/dashboard/ui"]
+				mountName: "dashboard"
+				initMountPath: "/dashboard"
+				appMountPath: "/dashboard"
 			}
 		},
 		// {
